@@ -83,6 +83,15 @@ The seeded business has 4 team members, 10 services, 90 customers and ~4,000 app
 | `npm run db:generate` | Generate a migration after editing `src/db/schema.ts` |
 | `npm run db:migrate` · `db:seed` · `db:setup` | Apply migrations · seed · both |
 
+### Testing from another device on your LAN
+
+```bash
+npm run build && npx next start -H 0.0.0.0 -p 3000
+# open http://<your-LAN-IP>:3000 on the phone (same Wi-Fi); keep NEXT_PUBLIC_APP_URL=http://localhost:3000 in .env
+node scripts/auth-regression.cjs   # checks login/session on localhost and every LAN IP
+```
+For real deployments use HTTPS and set `NEXT_PUBLIC_APP_URL=https://your-domain`.
+
 ### Screenshots
 
 With the app running and seeded: `node scripts/screenshots.cjs` (uses Playwright) writes images to `docs/screenshots/`.
@@ -93,7 +102,8 @@ With the app running and seeded: `node scripts/screenshots.cjs` (uses Playwright
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | ≥ 32 chars; signs session cookies. The app refuses to start sessions without it |
-| `NEXT_PUBLIC_APP_URL` | Public base URL (used for booking links/metadata) |
+| `NEXT_PUBLIC_APP_URL` | Public base URL (booking links/metadata). **An `https://` value also forces `Secure` session cookies** |
+| `AUTH_COOKIE_SECURE` | Optional `true`/`false` override of the cookie `Secure` flag (default: auto, see below) |
 
 ## Architecture
 
@@ -126,7 +136,7 @@ tests/             unit + integration tests
 Audited in the final review (see `tests/tenancy.integration.test.ts` and `scripts/e2e.cjs`):
 
 - **Passwords**: bcrypt (cost 12), 10–72 chars with letters and digits (72 = bcrypt's input limit). Unknown-email logins still run a bcrypt comparison to blunt user enumeration by timing.
-- **Sessions**: HS256 JWT in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production), 7-day expiry. User and membership are re-read from the database on **every request**, so removing a team member or changing a role takes effect immediately. Each user has a `session_version`; **changing the password revokes every other session** (verified end to end).
+- **Sessions**: HS256 JWT in an `httpOnly`, `SameSite=Lax`, host-only cookie. `Secure` is set when `NEXT_PUBLIC_APP_URL` is `https://` (cannot be downgraded by request headers) or the proxy sends `X-Forwarded-Proto: https`; it is *not* set for plain-HTTP localhost/LAN testing, because browsers silently drop `Secure` cookies from non-HTTPS, non-localhost origins (this was the cause of failed logins on `http://192.168.x.x`). Set `AUTH_COOKIE_SECURE=true` to force it, 7-day expiry. User and membership are re-read from the database on **every request**, so removing a team member or changing a role takes effect immediately. Each user has a `session_version`; **changing the password revokes every other session** (verified end to end).
 - **Authorization**: central permission matrix (`lib/permissions.ts`); pages call `requireCtx(permission)` and every Server Action calls `actionCtx(permission)`. Staff users are redirected away from dashboard/analytics/settings/services/team and rejected by the actions behind them.
 - **Tenant isolation**: every query/mutation filters by the session's `business_id`; client-supplied foreign ids (customer, service, staff, appointment, note, time-off) are re-checked against that business. Integration tests prove a business cannot book with, read, modify or see revenue of another business's data.
 - **SQL injection**: Drizzle parameterised queries / `sql` tagged templates only; the single `sql.raw` call interpolates an internal enum (`day|week|month`).

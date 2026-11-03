@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { shouldUseSecureCookie } from "./cookie";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
@@ -21,20 +22,23 @@ function secret() {
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 12);
 export const verifyPassword = (pw: string, hash: string) => bcrypt.compare(pw, hash);
 
+async function cookieOptions() {
+  const secure = shouldUseSecureCookie({
+    override: process.env.AUTH_COOKIE_SECURE,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+    forwardedProto: (await headers()).get("x-forwarded-proto"),
+  });
+  return { httpOnly: true, sameSite: "lax" as const, secure, path: "/" };
+}
+
 export async function createSession(userId: string, sessionVersion: number) {
   const token = await new SignJWT({ sv: sessionVersion }).setProtectedHeader({ alg: "HS256" }).setSubject(userId)
     .setIssuedAt().setExpirationTime(`${MAX_AGE}s`).sign(secret());
-  (await cookies()).set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: MAX_AGE,
-  });
+  (await cookies()).set(COOKIE, token, { ...(await cookieOptions()), maxAge: MAX_AGE });
 }
 
 export async function destroySession() {
-  (await cookies()).delete(COOKIE);
+  (await cookies()).set(COOKIE, "", { ...(await cookieOptions()), maxAge: 0 });
 }
 
 export const getSession = cache(async () => {
