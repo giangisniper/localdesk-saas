@@ -21,8 +21,8 @@ function secret() {
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 12);
 export const verifyPassword = (pw: string, hash: string) => bcrypt.compare(pw, hash);
 
-export async function createSession(userId: string) {
-  const token = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(userId)
+export async function createSession(userId: string, sessionVersion: number) {
+  const token = await new SignJWT({ sv: sessionVersion }).setProtectedHeader({ alg: "HS256" }).setSubject(userId)
     .setIssuedAt().setExpirationTime(`${MAX_AGE}s`).sign(secret());
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
@@ -41,22 +41,24 @@ export const getSession = cache(async () => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   let userId: string;
+  let sv = 0;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     if (!payload.sub) return null;
     userId = payload.sub;
+    sv = typeof payload.sv === "number" ? payload.sv : -1;
   } catch {
     return null;
   }
-  const [user] = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.id, userId));
-  if (!user) return null;
+  const [user] = await db.select({ id: users.id, name: users.name, email: users.email, sessionVersion: users.sessionVersion }).from(users).where(eq(users.id, userId));
+  if (!user || user.sessionVersion !== sv) return null;
   const [m] = await db
     .select({ business: businesses, role: memberships.role })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
     .where(eq(memberships.userId, userId))
     .limit(1);
-  return { user, business: m?.business ?? null, role: (m?.role ?? null) as Role | null };
+  return { user: { id: user.id, name: user.name, email: user.email }, business: m?.business ?? null, role: (m?.role ?? null) as Role | null };
 });
 
 export type Ctx = {

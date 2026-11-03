@@ -29,7 +29,7 @@ export async function registerAction(input: unknown): Promise<ActionResult> {
     const [dup] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email}`);
     if (dup) return fail("An account with this email already exists.", { email: "Email already registered" });
     const [u] = await db.insert(users).values({ name, email, passwordHash: await hashPassword(password) }).returning();
-    await createSession(u!.id);
+    await createSession(u!.id, u!.sessionVersion);
     return { ok: true };
   });
 }
@@ -43,7 +43,7 @@ export async function loginAction(input: unknown): Promise<ActionResult> {
     const [u] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`);
     const valid = await verifyPassword(password, u?.passwordHash ?? DUMMY_HASH);
     if (!u || !valid) return fail("Incorrect email or password.");
-    await createSession(u.id);
+    await createSession(u.id, u.sessionVersion);
     return { ok: true };
   });
 }

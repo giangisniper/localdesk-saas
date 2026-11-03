@@ -3,6 +3,6 @@ import path from "node:path";
 import "dotenv/config";
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+  resolve: { alias: { "@": path.resolve(__dirname, "src"), "server-only": path.resolve(__dirname, "tests/server-only-stub.ts") } },
   test: { environment: "node", include: ["tests/**/*.test.ts"], fileParallelism: false },
 });

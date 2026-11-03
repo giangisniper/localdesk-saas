@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { businesses, memberships, users } from "@/db/schema";
-import { actionCtx, hashPassword, verifyPassword } from "@/lib/auth";
+import { actionCtx, createSession, hashPassword, verifyPassword } from "@/lib/auth";
 import { fail, parse, safely, type ActionResult } from "@/lib/action";
 import { accountSchema, bookingRulesSchema, businessSchema, notificationsSchema, openingHoursSchema, passwordChangeSchema, registerSchema } from "@/lib/validation";
 
@@ -70,7 +70,8 @@ export async function changePasswordAction(input: unknown): Promise<ActionResult
     if (!p.ok) return p.res;
     const [u] = await db.select().from(users).where(eq(users.id, ctx.user.id));
     if (!u || !(await verifyPassword(p.data.current, u.passwordHash))) return fail("Current password is incorrect.", { current: "Incorrect password" });
-    await db.update(users).set({ passwordHash: await hashPassword(p.data.next) }).where(eq(users.id, u.id));
+    const [upd] = await db.update(users).set({ passwordHash: await hashPassword(p.data.next), sessionVersion: sql`${users.sessionVersion} + 1` }).where(eq(users.id, u.id)).returning({ v: users.sessionVersion });
+    await createSession(u.id, upd!.v); // keeps this device signed in; all other sessions are invalidated
     return { ok: true };
   });
 }

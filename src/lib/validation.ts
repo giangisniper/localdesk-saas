@@ -12,7 +12,7 @@ export const registerSchema = z.object({
   password: z
     .string()
     .min(10, "Use at least 10 characters")
-    .max(128)
+    .max(72, "Use at most 72 characters")
     .refine((p) => /[a-z]/i.test(p) && /\d/.test(p), "Include letters and numbers"),
 });
 export const loginSchema = z.object({

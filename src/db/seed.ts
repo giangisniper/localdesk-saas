@@ -27,6 +27,9 @@ const LAST = ["Rossi","Bianchi","Romano","Colombo","Ricci","Marino","Greco","Bru
 const NOTES = ["Prefers morning appointments.","Allergic to ammonia-based colour — use alternative.","Likes a quiet chair, no small talk.","Bring inspiration photos next time.","Referred by a friend — send a thank-you.","Sensitive scalp, gentle products only.","Usually runs 5 minutes late.","Wants to try a balayage next season."];
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Refusing to seed demo data (known passwords) in production. Set ALLOW_DEMO_SEED=true to override.");
+  }
   const [existing] = await db.select().from(s.businesses).where(eq(s.businesses.slug, "studio-luna"));
   if (existing) await db.delete(s.businesses).where(eq(s.businesses.id, existing.id));
   await db.delete(s.users).where(eq(s.users.email, "owner@demo.localdesk.app"));

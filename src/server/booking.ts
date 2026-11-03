@@ -88,6 +88,7 @@ export async function saveAppointment(business: Business, input: BookInput, acto
   const [member] = await db.select().from(staff).where(and(eq(staff.id, input.staffId), eq(staff.businessId, business.id)));
   const [customer] = await db.select().from(customers).where(and(eq(customers.id, input.customerId), eq(customers.businessId, business.id)));
   if (!service || !member || !customer) throw new ActionError("Customer, service or staff member not found.");
+  if (!input.id && (!service.active || !member.active)) throw new ActionError("That service or staff member is archived and can't take new bookings.");
   const [link] = await db.select().from(staffServices).where(and(eq(staffServices.staffId, member.id), eq(staffServices.serviceId, service.id)));
   if (!link) throw new ActionError(`${member.name} doesn't perform ${service.name}.`);
 
