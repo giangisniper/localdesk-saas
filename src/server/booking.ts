@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, gt, lt, ne, notInArray } from "drizzle-orm";
+import { and, eq, inArray, gt, lt, ne, notInArray, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
 import {
   activity, appointments, businesses, customers, services, staff, staffHours, staffServices, timeOff,
@@ -141,3 +141,15 @@ export async function setStatus(business: Business, id: string, status: BookInpu
   await logActivity(business.id, `appointment.${status}`, `${c?.name ?? "Appointment"} marked ${status.replace("_", " ")}`, actor);
 }
 
+
+/**
+ * Customers are unique per business by email (case-insensitive) when an email is given.
+ * Scoped to one tenant: the same address may exist in other businesses. Enforced in the application
+ * (not a DB constraint) because pre-existing data may legitimately contain duplicates.
+ */
+export async function findCustomerByEmail(businessId: string, email: string, excludeId?: string) {
+  if (!email) return null;
+  const [row] = await db.select({ id: customers.id, name: customers.name }).from(customers)
+    .where(and(eq(customers.businessId, businessId), sql`lower(${customers.email}) = ${email.toLowerCase()}`, excludeId ? ne(customers.id, excludeId) : undefined)).limit(1);
+  return row ?? null;
+}

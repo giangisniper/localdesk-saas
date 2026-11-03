@@ -1,9 +1,11 @@
 "use client";
+import { emailError } from "@/lib/email";
+import { PhoneInput } from "@/components/phone-input";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, Plus, Plane, Trash2, UserCog, X } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
-import { Alert, Avatar, Badge, Button, Card, Dialog, EmptyState, Field, Input, Switch, useToast } from "@/components/ui";
+import { Alert, Avatar, Badge, Button, Card, Dialog, EmptyState, Field, Input, Switch, useToast, DialogFooter } from "@/components/ui";
 import { ColorPicker } from "@/components/service-manager";
 import { addTimeOffAction, deleteStaffAction, removeTimeOffAction, saveStaffAction } from "@/app/actions/catalog";
 
@@ -79,8 +81,8 @@ function StaffForm({ member, services, tz, today, onClose }: { member?: StaffVM;
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Name" error={fe.name}><Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} autoFocus /></Field>
           <Field label="Role / title" error={fe.title}><Input value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} placeholder="Senior stylist" /></Field>
-          <Field label="Email" error={fe.email}><Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></Field>
-          <Field label="Phone"><Input type="tel" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} /></Field>
+          <Field label="Email" error={fe.email}><Input type="email" inputMode="email" autoCapitalize="none" value={v.email} onBlur={() => setFe((f) => ({ ...f, email: emailError(v.email) ?? "" }))} onChange={(e) => setV({ ...v, email: e.target.value })} /></Field>
+          <Field label="Phone" error={fe.phone}><PhoneInput value={v.phone} onChange={(phone) => setV({ ...v, phone })} /></Field>
         </div>
         <div><span className="mb-1.5 block text-[13px] font-medium text-ink-700">Calendar colour</span><ColorPicker value={v.color} onChange={(c) => setV({ ...v, color: c })} /></div>
 
@@ -121,13 +123,13 @@ function StaffForm({ member, services, tz, today, onClose }: { member?: StaffVM;
             </label>))}</div>
         </fieldset>
         <Switch checked={v.active} onChange={(c) => setV({ ...v, active: c })} label="Active" description="Inactive members don't appear in booking or the calendar." />
-        <div className="flex items-center justify-between border-t border-ink-100 pt-4">
+        <DialogFooter>
           <div>{member && <Button variant="ghost" className="text-red-600 hover:bg-red-50" disabled={pending} onClick={() => {
             if (!confirm("Remove this team member? If they have appointment history they will be deactivated instead.")) return;
             start(async () => { const r = await deleteStaffAction(member.id); if (r.ok) { toast("Team member removed"); onClose(); router.refresh(); } else setError(r.error); });
           }}><Trash2 className="size-4" />Remove</Button>}</div>
           <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={pending}>Save</Button></div>
-        </div>
+        </DialogFooter>
       </form>
 
       {member && (

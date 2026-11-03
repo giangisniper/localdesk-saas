@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: { default: "LocalDesk — Appointments, customers and analytics for local businesses", template: "%s · LocalDesk" },
   description: "LocalDesk is the all-in-one booking, CRM and analytics platform for salons, clinics, studios and independent professionals.",
 };
-export const viewport: Viewport = { themeColor: "#0d7d77", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0d7d77", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

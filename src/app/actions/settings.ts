@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { businesses, memberships, users } from "@/db/schema";
 import { actionCtx, createSession, hashPassword, verifyPassword } from "@/lib/auth";
 import { fail, parse, safely, type ActionResult } from "@/lib/action";
+import { unlinkIdentity } from "@/server/oauth";
+import { isProvider } from "@/lib/oauth/config";
 import { accountSchema, bookingRulesSchema, businessSchema, notificationsSchema, openingHoursSchema, passwordChangeSchema, registerSchema } from "@/lib/validation";
 
 function done(): ActionResult { revalidatePath("/", "layout"); return { ok: true }; }
@@ -69,7 +71,12 @@ export async function changePasswordAction(input: unknown): Promise<ActionResult
     const p = parse(passwordChangeSchema, input);
     if (!p.ok) return p.res;
     const [u] = await db.select().from(users).where(eq(users.id, ctx.user.id));
-    if (!u || !(await verifyPassword(p.data.current, u.passwordHash))) return fail("Current password is incorrect.", { current: "Incorrect password" });
+    if (!u) return fail("Account not found.");
+    if (u.passwordHash) {
+      // Accounts that already have a password must prove they know it. OAuth-only accounts have none yet,
+      // so they can set one from an already-authenticated session.
+      if (!p.data.current || !(await verifyPassword(p.data.current, u.passwordHash))) return fail("Current password is incorrect.", { current: "Incorrect password" });
+    }
     const [upd] = await db.update(users).set({ passwordHash: await hashPassword(p.data.next), sessionVersion: sql`${users.sessionVersion} + 1` }).where(eq(users.id, u.id)).returning({ v: users.sessionVersion });
     await createSession(u.id, upd!.v); // keeps this device signed in; all other sessions are invalidated
     return { ok: true };
@@ -109,6 +116,16 @@ export async function removeMemberAction(userId: string): Promise<ActionResult> 
     if (!z.string().uuid().safeParse(userId).success) return fail("Invalid user.");
     if (userId === ctx.user.id) return fail("You can't remove yourself.");
     await db.delete(memberships).where(and(eq(memberships.userId, userId), eq(memberships.businessId, ctx.business.id), ne(memberships.role, "owner")));
+    return done();
+  });
+}
+
+export async function unlinkProviderAction(provider: string): Promise<ActionResult> {
+  return safely(async () => {
+    const ctx = await actionCtx();
+    if (!isProvider(provider)) return fail("Unknown provider.");
+    const r = await unlinkIdentity(ctx.user.id, provider);
+    if (!r.ok) return fail(r.reason);
     return done();
   });
 }

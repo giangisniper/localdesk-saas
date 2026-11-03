@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { shouldUseSecureCookie } from "./cookie";
+import { appUrl } from "./oauth/config";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
@@ -25,7 +26,7 @@ export const verifyPassword = (pw: string, hash: string) => bcrypt.compare(pw, h
 async function cookieOptions() {
   const secure = shouldUseSecureCookie({
     override: process.env.AUTH_COOKIE_SECURE,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+    appUrl: appUrl(), // read at runtime (not inlined at build time)
     forwardedProto: (await headers()).get("x-forwarded-proto"),
   });
   return { httpOnly: true, sameSite: "lax" as const, secure, path: "/" };

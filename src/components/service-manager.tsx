@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Clock, Pencil, Plus, Scissors } from "lucide-react";
-import { Alert, Badge, Button, Card, Dialog, EmptyState, Field, Input, Switch, Textarea, useToast } from "@/components/ui";
+import { Alert, Badge, Button, Card, Dialog, EmptyState, Field, Input, Switch, Textarea, useToast, DialogFooter } from "@/components/ui";
 import { deleteServiceAction, saveServiceAction } from "@/app/actions/catalog";
 import { formatDuration, formatMoney } from "@/lib/utils";
 
@@ -100,13 +100,13 @@ function ServiceForm({ service, staff, currency, onClose }: { service?: ServiceV
         <Switch checked={v.active} onChange={(c) => setV({ ...v, active: c })} label="Active" description="Archived services can't be booked." />
         <Switch checked={v.bookableOnline} onChange={(c) => setV({ ...v, bookableOnline: c })} label="Bookable online" description="Show this service on your public booking page." />
       </div>
-      <div className="flex items-center justify-between border-t border-ink-100 pt-4">
+      <DialogFooter>
         <div>{service && <Button variant="ghost" className="text-red-600 hover:bg-red-50" disabled={pending} onClick={() => {
           if (!confirm("Delete this service? If it has appointments it will be archived instead.")) return;
           start(async () => { const r = await deleteServiceAction(service.id); if (r.ok) { toast((r.data as { archived: boolean }).archived ? "Service archived (it has appointment history)" : "Service deleted"); onClose(); router.refresh(); } else setError(r.error); });
         }}>Delete</Button>}</div>
         <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={pending}>Save service</Button></div>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

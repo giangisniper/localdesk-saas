@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "db:setup": "npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "oauth:status": "tsx scripts/oauth-status.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -22,8 +23,10 @@
     "drizzle-orm": "^0.45.4",
     "geist": "^1.9.0",
     "jose": "^6.2.15",
+    "libphonenumber-js": "^1.13.15",
     "lucide-react": "^1.67.0",
     "next": "^15.5.28",
+    "openid-client": "^6.8.9",
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -1,6 +1,11 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  // Pin the tracing/workspace root to this project. Without it Next.js infers the root from the
+  // nearest lockfile and warns ("Multiple lockfiles detected") when a stray package-lock.json exists
+  // in a parent directory (e.g. ~/package-lock.json), which can also mis-trace files in deployments.
+  outputFileTracingRoot: path.resolve(__dirname),
   poweredByHeader: false,
   serverExternalPackages: ["pg"],
   async headers() {

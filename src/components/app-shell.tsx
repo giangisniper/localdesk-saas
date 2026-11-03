@@ -69,7 +69,7 @@ export function AppShell({ business, user, role, children }: { business: { name:
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-200 bg-ink-50/90 px-4 py-2.5 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-200 bg-ink-50/90 px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
           <Logo href="/dashboard" />
           <button onClick={() => setOpen(true)} aria-label="Open menu" className="rounded-md p-2 hover:bg-ink-200/60"><Menu className="size-5" /></button>
         </header>

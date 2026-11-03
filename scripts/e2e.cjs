@@ -35,7 +35,7 @@ async function login(page, email, pw = 'LocalDesk2026!') {
   await p.keyboard.press('Escape');
 
   await p.goto(`${BASE}/appointments?q=Rossi&when=upcoming`);
-  await p.locator('tbody tr', { hasText: 'Men' }).first().click();
+  await p.locator('tbody tr', { hasText: 'Men' }).filter({ hasNotText: 'Cancelled' }).first().click();
   await p.waitForSelector('dialog:has-text("Edit appointment")');
   await p.click('dialog button:has-text("Cancel"):not(:has-text("Close"))'); await p.waitForSelector('text=Appointment cancelled'); log('appointment cancelled');
 

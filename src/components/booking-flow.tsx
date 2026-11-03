@@ -1,4 +1,6 @@
 "use client";
+import { emailError } from "@/lib/email";
+import { PhoneInput } from "@/components/phone-input";
 import { useEffect, useState, useTransition } from "react";
 import { addMonths, format, parseISO } from "date-fns";
 import { ArrowLeft, CalendarCheck, ChevronLeft, ChevronRight, Clock } from "lucide-react";
@@ -41,6 +43,8 @@ export function BookingFlow({ slug, services, staff, currency, today, maxAdvance
 
   function submit() {
     setError(undefined); setFe({});
+    const emailProblem = emailError(form.email, { required: true });
+    if (emailProblem || form.name.trim().length < 2) { setFe({ ...(form.name.trim().length < 2 ? { name: "Enter your name" } : {}), ...(emailProblem ? { email: emailProblem } : {}) }); return; }
     start(async () => {
       const r = await createPublicBookingAction({ slug, serviceId: service!.id, staffId, date, time, ...form });
       if (r.ok) setDone(r.data); else { setError(r.error); setFe(r.fieldErrors ?? {}); }
@@ -128,7 +132,7 @@ export function BookingFlow({ slug, services, staff, currency, today, maxAdvance
             <Field label="Full name" error={fe.name}><Input value={form.name} autoComplete="name" onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
             <Field label="Email" error={fe.email}><Input type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
           </div>
-          <Field label="Phone (optional)"><Input type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+          <Field label="Phone (optional)" error={fe.phone}><PhoneInput value={form.phone} onChange={(phone) => setForm({ ...form, phone })} /></Field>
           <Field label="Notes (optional)"><Textarea value={form.notes} maxLength={500} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
           <p className="text-xs text-ink-500">Free cancellation up to {cancellationHours} hours before your appointment.</p>
           <Button type="submit" size="lg" className="w-full" loading={pending}>Confirm booking</Button>

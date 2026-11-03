@@ -7,7 +7,7 @@ import { customerNotes, customers } from "@/db/schema";
 import { actionCtx } from "@/lib/auth";
 import { fail, parse, safely, type ActionResult } from "@/lib/action";
 import { customerSchema } from "@/lib/validation";
-import { logActivity } from "@/server/booking";
+import { findCustomerByEmail, logActivity } from "@/server/booking";
 
 export async function saveCustomerAction(input: unknown): Promise<ActionResult<{ id: string }>> {
   return safely<{ id: string }>(async () => {
@@ -15,6 +15,8 @@ export async function saveCustomerAction(input: unknown): Promise<ActionResult<{
     const p = parse(customerSchema, input);
     if (!p.ok) return p.res;
     const { id, ...v } = p.data;
+    const dup = await findCustomerByEmail(ctx.business.id, v.email, id);
+    if (dup) return fail(`${dup.name} already uses this email.`, { email: `Already used by ${dup.name}` });
     if (id) {
       const [u] = await db.update(customers).set(v).where(and(eq(customers.id, id), eq(customers.businessId, ctx.business.id))).returning();
       if (!u) return fail("Customer not found.");

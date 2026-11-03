@@ -1,10 +1,14 @@
 "use client";
+import { emailError } from "@/lib/email";
+import { PhoneInput } from "@/components/phone-input";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Copy } from "lucide-react";
 import { Alert, Badge, Button, Card, CardHeader, Field, Input, Select, Switch, Textarea, useToast } from "@/components/ui";
 import type { ActionResult } from "@/lib/action";
 import { cn } from "@/lib/utils";
+import { oauthErrorMessage, type ProviderStatus } from "@/lib/oauth/config";
+import { unlinkProviderAction } from "@/app/actions/settings";
 import { addMemberAction, changePasswordAction, changeRoleAction, removeMemberAction, updateAccountAction, updateBusinessAction, updateHoursAction, updateNotificationsAction, updateRulesAction } from "@/app/actions/settings";
 import type { NotificationPrefs, OpeningHours } from "@/db/schema";
 
@@ -31,8 +35,9 @@ function useSave() {
   return { pending, error, fe, run };
 }
 
-export function SettingsTabs({ business, user, role, members, appUrl }: { business: Biz; user: { id: string; name: string; email: string }; role: string; members: Member[]; appUrl: string }) {
-  const [tab, setTab] = useState<(typeof TABS)[number][0]>("business");
+export type ProviderVM = ProviderStatus & { linked: string | null };
+export function SettingsTabs({ business, user, role, members, appUrl, providers, hasPassword, initialTab, flash }: { business: Biz; user: { id: string; name: string; email: string }; role: string; members: Member[]; appUrl: string; providers: ProviderVM[]; hasPassword: boolean; initialTab?: string; flash: { linked?: string; error?: string } }) {
+  const [tab, setTab] = useState<(typeof TABS)[number][0]>(TABS.some(([k]) => k === initialTab) ? (initialTab as (typeof TABS)[number][0]) : "business");
   const tabs = TABS.filter(([k]) => k !== "team" || role === "owner");
   return (
     <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
@@ -46,7 +51,7 @@ export function SettingsTabs({ business, user, role, members, appUrl }: { busine
         {tab === "hours" && <HoursTab b={business} />}
         {tab === "booking" && <BookingTab b={business} />}
         {tab === "notifications" && <NotificationsTab b={business} />}
-        {tab === "account" && <AccountTab user={user} role={role} />}
+        {tab === "account" && <AccountTab user={user} role={role} providers={providers} hasPassword={hasPassword} flash={flash} />}
         {tab === "team" && <TeamTab members={members} selfId={user.id} />}
       </div>
     </div>
@@ -57,19 +62,20 @@ function BusinessTab({ b, appUrl }: { b: Biz; appUrl: string }) {
   const s = useSave();
   const toast = useToast();
   const [v, setV] = useState({ name: b.name, slug: b.slug, category: b.category, description: b.description, email: b.email, phone: b.phone, address: b.address, timezone: b.timezone, currency: b.currency });
+  const [emailErr, setEmailErr] = useState<string>();
   const zones = ZONES.includes(v.timezone) ? ZONES : [v.timezone, ...ZONES];
   const link = `${appUrl}/book/${v.slug}`;
   return (
     <Card><CardHeader title="Business profile" description="Shown on your public booking page." />
-      <form className="space-y-4 px-5 pb-5" onSubmit={(e) => { e.preventDefault(); s.run(() => updateBusinessAction(v)); }}>
+      <form className="space-y-4 px-5 pb-5" onSubmit={(e) => { e.preventDefault(); const ep = emailError(v.email); if (ep) { setEmailErr(ep); return; } setEmailErr(undefined); s.run(() => updateBusinessAction(v)); }}>
         {s.error && <Alert>{s.error}</Alert>}
         <Field label="Business name" error={s.fe.name}><Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} /></Field>
         <Field label="Booking page URL" error={s.fe.slug} hint={link}><Input value={v.slug} onChange={(e) => setV({ ...v, slug: e.target.value })} /></Field>
         <Button type="button" variant="ghost" size="sm" onClick={() => { void navigator.clipboard?.writeText(link); toast("Booking link copied"); }}><Copy className="size-4" />Copy booking link</Button>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Category" error={s.fe.category}><Input value={v.category} onChange={(e) => setV({ ...v, category: e.target.value })} /></Field>
-          <Field label="Public email" error={s.fe.email}><Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></Field>
-          <Field label="Phone"><Input type="tel" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} /></Field>
+          <Field label="Public email" error={emailErr ?? s.fe.email}><Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></Field>
+          <Field label="Phone" error={s.fe.phone}><PhoneInput value={v.phone} onChange={(phone) => setV({ ...v, phone })} /></Field>
           <Field label="Address"><Input value={v.address} onChange={(e) => setV({ ...v, address: e.target.value })} /></Field>
           <Field label="Timezone" error={s.fe.timezone}><Select value={v.timezone} onChange={(e) => setV({ ...v, timezone: e.target.value })}>{zones.map((z) => <option key={z}>{z}</option>)}</Select></Field>
           <Field label="Currency"><Select value={v.currency} onChange={(e) => setV({ ...v, currency: e.target.value })}>{["EUR", "USD", "GBP", "CHF", "CAD", "AUD"].map((c) => <option key={c}>{c}</option>)}</Select></Field>
@@ -154,7 +160,7 @@ function NotificationsTab({ b }: { b: Biz }) {
   );
 }
 
-function AccountTab({ user, role }: { user: { name: string; email: string }; role: string }) {
+function AccountTab({ user, role, providers, hasPassword, flash }: { user: { name: string; email: string }; role: string; providers: ProviderVM[]; hasPassword: boolean; flash: { linked?: string; error?: string } }) {
   const a = useSave(); const p = useSave();
   const [name, setName] = useState(user.name);
   const [pw, setPw] = useState({ current: "", next: "" });
@@ -169,15 +175,47 @@ function AccountTab({ user, role }: { user: { name: string; email: string }; rol
           <Button type="submit" loading={a.pending}>Save</Button>
         </form>
       </Card>
-      <Card><CardHeader title="Change password" />
+      <SignInMethods providers={providers} flash={flash} hasPassword={hasPassword} />
+      <Card><CardHeader title={hasPassword ? "Change password" : "Set a password"} description={hasPassword ? undefined : "Optional: lets you also sign in with your email and a password."} />
         <form className="space-y-4 px-5 pb-5" onSubmit={(e) => { e.preventDefault(); p.run(() => changePasswordAction(pw), "Password updated", () => setPw({ current: "", next: "" })); }}>
           {p.error && <Alert>{p.error}</Alert>}
-          <Field label="Current password" error={p.fe.current}><Input type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} /></Field>
+          {hasPassword && <Field label="Current password" error={p.fe.current}><Input type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} /></Field>}
           <Field label="New password" error={p.fe.next} hint="At least 10 characters with letters and numbers."><Input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} /></Field>
-          <Button type="submit" loading={p.pending}>Update password</Button>
+          <Button type="submit" loading={p.pending}>{hasPassword ? "Update password" : "Set password"}</Button>
         </form>
       </Card>
     </div>
+  );
+}
+
+function SignInMethods({ providers, flash, hasPassword }: { providers: ProviderVM[]; flash: { linked?: string; error?: string }; hasPassword: boolean }) {
+  const s = useSave();
+  const names: Record<string, string> = { google: "Google", apple: "Apple" };
+  const errorMsg = oauthErrorMessage(flash.error);
+  return (
+    <Card><CardHeader title="Sign-in methods" description="Connect Google or Apple to your existing account. Providers are never linked automatically by email." />
+      <div className="space-y-3 px-5 pb-5">
+        {errorMsg && <Alert>{errorMsg}</Alert>}
+        {flash.linked && names[flash.linked] && <Alert tone="success">{names[flash.linked]} connected.</Alert>}
+        {s.error && <Alert>{s.error}</Alert>}
+        <ul className="divide-y divide-ink-100">
+          <li className="flex items-center justify-between py-3 text-sm"><span className="font-medium">Email &amp; password</span>{hasPassword ? <Badge tone="green">Enabled</Badge> : <Badge>Not set</Badge>}</li>
+          {providers.map((p) => (
+            <li key={p.provider} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+              <span><span className="font-medium">{names[p.provider]}</span>
+                {p.linked !== null && <span className="block text-[13px] text-ink-500">Connected{p.linked ? ` as ${p.linked}` : ""}</span>}
+                {p.linked === null && !p.ready && <span className="block text-[13px] text-ink-500">{p.problem ?? `Not configured (missing ${p.missing.join(", ")}). See docs/OAUTH_SETUP.md.`}</span>}
+              </span>
+              {p.linked !== null ? (
+                <Button variant="secondary" size="sm" loading={s.pending} onClick={() => { if (confirm(`Disconnect ${names[p.provider]}?`)) s.run(() => unlinkProviderAction(p.provider), `${names[p.provider]} disconnected`); }}>Disconnect</Button>
+              ) : p.ready ? (
+                <a href={`/api/auth/${p.provider}/start?mode=link`} className="inline-flex h-8 items-center rounded-lg bg-white px-3 text-[13px] font-medium shadow-card hover:bg-ink-50">Connect</a>
+              ) : <Badge tone="amber">Not ready</Badge>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
   );
 }
 

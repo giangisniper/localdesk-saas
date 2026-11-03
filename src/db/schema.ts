@@ -42,11 +42,33 @@ export const users = pgTable(
     id: id(),
     email: text("email").notNull(),
     name: text("name").notNull(),
-    passwordHash: text("password_hash").notNull(),
+    /** null for accounts that only sign in with Google/Apple */
+    passwordHash: text("password_hash"),
     sessionVersion: integer("session_version").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
+);
+
+export const oauthProviderEnum = pgEnum("oauth_provider", ["google", "apple"]);
+
+/** Persistent link between a LocalDesk user and an identity at an external provider. */
+export const oauthAccounts = pgTable(
+  "oauth_accounts",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    provider: oauthProviderEnum("provider").notNull(),
+    /** the provider's stable subject identifier (`sub`) — never the email */
+    providerAccountId: text("provider_account_id").notNull(),
+    /** email reported by the provider at link time (informational; Apple may be a private relay) */
+    email: text("email"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("oauth_accounts_identity_idx").on(t.provider, t.providerAccountId),
+    uniqueIndex("oauth_accounts_user_provider_idx").on(t.userId, t.provider),
+  ],
 );
 
 export const businesses = pgTable(

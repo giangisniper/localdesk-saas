@@ -1,8 +1,10 @@
 "use client";
+import { emailError } from "@/lib/email";
+import { PhoneInput } from "@/components/phone-input";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { Alert, Button, Dialog, Field, Input, Switch, Textarea, useToast } from "@/components/ui";
+import { Alert, Button, Dialog, Field, Input, Switch, Textarea, useToast, DialogFooter } from "@/components/ui";
 import { addNoteAction, deleteCustomerAction, deleteNoteAction, saveCustomerAction } from "@/app/actions/customers";
 
 export interface CustomerValues { id?: string; name: string; email: string; phone: string; tags: string[]; marketingOptIn: boolean }
@@ -29,6 +31,8 @@ function CustomerForm({ customer, canDelete, onClose }: { customer?: CustomerVal
   const [fe, setFe] = useState<Record<string, string>>({});
 
   function save() {
+    const emailProblem = emailError(v.email);
+    if (emailProblem) { setFe({ email: emailProblem }); setError("Please check the highlighted fields."); return; }
     start(async () => {
       const r = await saveCustomerAction({ ...v, tags: tags.split(",").map((t) => t.trim()).filter(Boolean) });
       if (r.ok) { toast(customer ? "Customer updated" : "Customer added"); onClose(); if (!customer && r.data) router.push(`/customers/${(r.data as { id: string }).id}`); else router.refresh(); return; }
@@ -48,14 +52,14 @@ function CustomerForm({ customer, canDelete, onClose }: { customer?: CustomerVal
       <Field label="Full name" error={fe.name}><Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} autoFocus /></Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Email" error={fe.email}><Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></Field>
-        <Field label="Phone" error={fe.phone}><Input type="tel" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} /></Field>
+        <Field label="Phone" error={fe.phone}><PhoneInput value={v.phone} onChange={(phone) => setV({ ...v, phone })} /></Field>
       </div>
       <Field label="Tags" error={fe.tags} hint="Comma-separated, e.g. VIP, Colour client"><Input value={tags} onChange={(e) => setTags(e.target.value)} /></Field>
       <Switch checked={v.marketingOptIn} onChange={(c) => setV({ ...v, marketingOptIn: c })} label="Marketing consent" description="The customer agreed to receive offers and news." />
-      <div className="flex items-center justify-between border-t border-ink-100 pt-4">
+      <DialogFooter>
         <div>{customer && canDelete && <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={remove} disabled={pending}><Trash2 className="size-4" />Delete</Button>}</div>
         <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" loading={pending}>{customer ? "Save" : "Add customer"}</Button></div>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

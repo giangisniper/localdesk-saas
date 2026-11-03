@@ -8,7 +8,7 @@ import { actionCtx } from "@/lib/auth";
 import { fail, parse, safely, type ActionResult } from "@/lib/action";
 import { parsePriceToCents } from "@/lib/money";
 import { appointmentSchema, customerSchema } from "@/lib/validation";
-import { logActivity, saveAppointment, setStatus } from "@/server/booking";
+import { findCustomerByEmail, logActivity, saveAppointment, setStatus } from "@/server/booking";
 
 const inputSchema = appointmentSchema.extend({
   customerId: z.string().uuid().optional(),
@@ -24,6 +24,8 @@ export async function saveAppointmentAction(input: unknown): Promise<ActionResul
     let customerId = d.customerId;
     if (!customerId) {
       if (!d.newCustomer) return fail("Choose a customer or add a new one.", { customerId: "Select a customer" });
+      const dup = await findCustomerByEmail(ctx.business.id, d.newCustomer.email);
+      if (dup) return fail(`${dup.name} already uses this email — pick them from the list.`, { "newCustomer.email": `Already used by ${dup.name}` });
       const [c] = await db.insert(customers).values({ businessId: ctx.business.id, ...d.newCustomer }).returning();
       customerId = c!.id;
       await logActivity(ctx.business.id, "customer.created", `${c!.name} added as a customer`, ctx.user.name);

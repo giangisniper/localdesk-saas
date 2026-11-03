@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, pool } from "./index";
 import * as s from "./schema";
+import { toE164 } from "../lib/contact";
 import { addDaysStr, todayIn, weekdayOf, zonedInstant } from "../lib/time";
 
 const TZ = "Europe/Rome";
@@ -25,6 +26,14 @@ const weighted = <T,>(a: [T, number][]) => {
 const FIRST = ["Giulia","Marco","Sofia","Luca","Chiara","Alessandro","Elena","Matteo","Francesca","Davide","Martina","Andrea","Sara","Federico","Valentina","Simone","Alice","Lorenzo","Beatrice","Gabriele","Anna","Riccardo","Ilaria","Tommaso","Camilla","Emma","Paolo","Laura","Nicola","Silvia","Claire","James","Hannah","Daniel","Maria","Pedro","Nina","Oliver","Julia","Thomas"];
 const LAST = ["Rossi","Bianchi","Romano","Colombo","Ricci","Marino","Greco","Bruno","Gallo","Conti","De Luca","Mancini","Costa","Giordano","Rizzo","Lombardi","Moretti","Barbieri","Fontana","Santoro","Mariani","Rinaldi","Caruso","Ferrara","Galli","Martini","Leone","Longo","Gentile","Villa"];
 const NOTES = ["Prefers morning appointments.","Allergic to ammonia-based colour — use alternative.","Likes a quiet chair, no small talk.","Bring inspiration photos next time.","Referred by a friend — send a thank-you.","Sensitive scalp, gentle products only.","Usually runs 5 minutes late.","Wants to try a balayage next season."];
+
+const PHONE_TEMPLATES = [() => `+39 3${20 + Math.floor(rnd() * 79)} ${Math.floor(rnd() * 9000000 + 1000000)}`, () => `+39 3${20 + Math.floor(rnd() * 79)} ${Math.floor(rnd() * 9000000 + 1000000)}`,
+  () => `+39 3${20 + Math.floor(rnd() * 79)} ${Math.floor(rnd() * 9000000 + 1000000)}`, () => `+44 7${Math.floor(rnd() * 900 + 100)} ${Math.floor(rnd() * 900000 + 100000)}`, () => `+33 6 ${Math.floor(rnd() * 90 + 10)} ${Math.floor(rnd() * 90 + 10)} ${Math.floor(rnd() * 90 + 10)} ${Math.floor(rnd() * 90 + 10)}`];
+/** Always returns a *valid* E.164 number (same format the app now stores). */
+function demoPhone(): string {
+  for (let i = 0; i < 50; i++) { const n = toE164(pick(PHONE_TEMPLATES)()); if (n) return n; }
+  return "";
+}
 
 async function main() {
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
@@ -50,7 +59,7 @@ async function main() {
   const [biz] = await db.insert(s.businesses).values({
     name: "Studio Luna", slug: "studio-luna", category: "Hair & Beauty",
     description: "Independent hair and beauty studio in the heart of Milan. Cuts, colour and treatments by appointment.",
-    email: "hello@studioluna.example", phone: "+39 02 5550 0142", address: "Via Tortona 18, 20144 Milano MI",
+    email: "hello@studioluna.example", phone: "+390255500142", address: "Via Tortona 18, 20144 Milano MI",
     timezone: TZ, currency: "EUR", slotIntervalMin: 15, minNoticeHours: 2, maxAdvanceDays: 60, cancellationHours: 24, bufferMin: 0,
     openingHours: weekHours(), onboardedAt: new Date(),
   }).returning();
@@ -116,7 +125,7 @@ async function main() {
     customerValues.push({
       businessId, name, createdAt: created,
       email: `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@example.com`,
-      phone: `+39 3${Math.floor(rnd() * 90 + 10)} ${Math.floor(rnd() * 900 + 100)} ${Math.floor(rnd() * 9000 + 1000)}`,
+      phone: demoPhone(),
       tags: rnd() < 0.2 ? ["VIP"] : rnd() < 0.15 ? ["Colour client"] : [],
       marketingOptIn: rnd() < 0.6,
     });

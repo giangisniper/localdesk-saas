@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DATE_RE } from "./time";
+import { emailField, optionalEmailField, optionalPhoneField } from "./contact";
 
 export const timeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM");
 export const dateStr = z.string().regex(DATE_RE, "Invalid date");
@@ -8,7 +9,7 @@ const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(80),
-  email: z.string().trim().toLowerCase().email("Enter a valid email").max(160),
+  email: emailField,
   password: z
     .string()
     .min(10, "Use at least 10 characters")
@@ -16,7 +17,7 @@ export const registerSchema = z.object({
     .refine((p) => /[a-z]/i.test(p) && /\d/.test(p), "Include letters and numbers"),
 });
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  email: emailField,
   password: z.string().min(1, "Enter your password").max(128),
 });
 
@@ -49,8 +50,8 @@ export const businessSchema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Lowercase letters, numbers and dashes").min(3).max(48),
   category: z.string().trim().min(2).max(40),
   description: z.string().trim().max(500),
-  email: z.union([z.literal(""), z.string().trim().email()]),
-  phone: z.string().trim().max(40),
+  email: optionalEmailField,
+  phone: optionalPhoneField,
   address: z.string().trim().max(200),
   timezone: z.string().min(1),
   currency: z.enum(["EUR", "USD", "GBP", "CHF", "CAD", "AUD"]),
@@ -74,7 +75,7 @@ export const accountSchema = z.object({
   name: z.string().trim().min(2).max(80),
 });
 export const passwordChangeSchema = z.object({
-  current: z.string().min(1, "Enter your current password"),
+  current: z.string().max(128).optional(), // required by the action when the account already has a password
   next: registerSchema.shape.password,
 });
 
@@ -94,8 +95,8 @@ export const serviceSchema = z.object({
 export const staffSchema = z.object({
   id: uuid.optional(),
   name: z.string().trim().min(2, "Enter a name").max(80),
-  email: z.union([z.literal(""), z.string().trim().email("Invalid email")]),
-  phone: z.string().trim().max(40).default(""),
+  email: optionalEmailField,
+  phone: optionalPhoneField.default(""),
   title: z.string().trim().max(60).default(""),
   color,
   active: z.boolean(),
@@ -114,8 +115,8 @@ export const timeOffSchema = z.object({
 export const customerSchema = z.object({
   id: uuid.optional(),
   name: z.string().trim().min(2, "Enter a name").max(100),
-  email: z.union([z.literal(""), z.string().trim().toLowerCase().email("Invalid email")]),
-  phone: z.string().trim().max(40).default(""),
+  email: optionalEmailField,
+  phone: optionalPhoneField.default(""),
   tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
   marketingOptIn: z.boolean().default(false),
 });
@@ -139,7 +140,7 @@ export const publicBookingSchema = z.object({
   date: dateStr,
   time: timeStr,
   name: z.string().trim().min(2, "Enter your name").max(100),
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
-  phone: z.string().trim().max(40).default(""),
+  email: emailField,
+  phone: optionalPhoneField.default(""),
   notes: z.string().trim().max(500).default(""),
 });

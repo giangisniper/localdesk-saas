@@ -1,8 +1,10 @@
 "use client";
+import { emailError } from "@/lib/email";
+import { PhoneInput } from "@/components/phone-input";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, CheckCircle2, UserX } from "lucide-react";
-import { Alert, Button, Dialog, Field, Input, Select, StatusBadge, Textarea, useToast } from "@/components/ui";
+import { Alert, Button, Dialog, Field, Input, Select, StatusBadge, Textarea, useToast, DialogFooter } from "@/components/ui";
 import { deleteAppointmentAction, saveAppointmentAction, setStatusAction } from "@/app/actions/appointments";
 import { addMinutesToTime } from "@/lib/client-time";
 import { formatMoney } from "@/lib/utils";
@@ -63,6 +65,8 @@ function AppointmentForm({ draft, onClose, data }: { draft: Draft; onClose: () =
 
   function save() {
     setError(undefined); setFe({});
+    const emailProblem = mode === "new" ? emailError(nc.email) : undefined;
+    if (emailProblem) { setFe({ "newCustomer.email": emailProblem }); setError("Please check the highlighted fields."); return; }
     start(async () => {
       const r = await saveAppointmentAction({
         id: draft.id, customerId: mode === "existing" ? customerId || undefined : undefined,
@@ -118,7 +122,7 @@ function AppointmentForm({ draft, onClose, data }: { draft: Draft; onClose: () =
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Name" error={fe["newCustomer.name"]}><Input value={nc.name} onChange={(e) => setNc({ ...nc, name: e.target.value })} /></Field>
             <Field label="Email" error={fe["newCustomer.email"]}><Input type="email" value={nc.email} onChange={(e) => setNc({ ...nc, email: e.target.value })} /></Field>
-            <Field label="Phone"><Input type="tel" value={nc.phone} onChange={(e) => setNc({ ...nc, phone: e.target.value })} /></Field>
+            <Field label="Phone" error={fe["newCustomer.phone"]}><PhoneInput value={nc.phone} onChange={(phone) => setNc({ ...nc, phone })} /></Field>
           </div>
         )}
       </div>
@@ -145,7 +149,7 @@ function AppointmentForm({ draft, onClose, data }: { draft: Draft; onClose: () =
       </div>
       <Field label="Notes" error={fe.notes}><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the team should know" maxLength={1000} /></Field>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 pt-4">
+      <DialogFooter>
         <div className="flex flex-wrap gap-2">
           {editing && draft.status !== "completed" && <Button variant="secondary" size="sm" disabled={pending} onClick={() => quick("completed", "Marked as completed")}><CheckCircle2 className="size-4 text-emerald-600" />Complete</Button>}
           {editing && draft.status !== "no_show" && <Button variant="secondary" size="sm" disabled={pending} onClick={() => quick("no_show", "Marked as no-show")}><UserX className="size-4 text-amber-600" />No-show</Button>}
@@ -156,7 +160,7 @@ function AppointmentForm({ draft, onClose, data }: { draft: Draft; onClose: () =
           <Button variant="ghost" onClick={onClose}>Close</Button>
           <Button loading={pending} onClick={save} disabled={!serviceId || !staffId}>{editing ? "Save changes" : "Book appointment"}</Button>
         </div>
-      </div>
+      </DialogFooter>
     </div>
   );
 }

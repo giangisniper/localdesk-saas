@@ -23,7 +23,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 
 /* ---------- Form fields ---------- */
 const fieldBase =
-  "w-full rounded-lg bg-white px-3 text-sm text-ink-900 shadow-card placeholder:text-ink-400 focus:outline-2 focus:outline-brand-500 disabled:bg-ink-100 disabled:text-ink-500 aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-red-500";
+  "w-full rounded-lg bg-white px-3 text-base text-ink-900 shadow-card sm:text-sm placeholder:text-ink-400 focus:outline-2 focus:outline-brand-500 disabled:bg-ink-100 disabled:text-ink-500 aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-red-500";
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...p }, ref) {
   return <input ref={ref} className={cn(fieldBase, "h-9", className)} {...p} />;
 });
@@ -153,9 +153,9 @@ export function Dialog({ open, onClose, title, description, children, wide }: { 
   return (
     <dialog ref={ref} onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}
       aria-labelledby="dlg-title"
-      className={cn("m-auto w-[calc(100%-2rem)] rounded-2xl bg-white p-0 shadow-pop open:animate-rise", wide ? "max-w-2xl" : "max-w-md")}>
+      className={cn("m-auto w-[calc(100%-2rem)] rounded-2xl bg-white p-0 shadow-pop open:animate-rise max-sm:m-0 max-sm:mt-auto max-sm:w-full max-sm:max-w-full max-sm:rounded-b-none", wide ? "max-w-2xl" : "max-w-md")}>
       {open && (
-        <div className="max-h-[88vh] overflow-y-auto">
+        <div className="max-h-[88vh] scroll-pb-28 overflow-y-auto overscroll-contain max-sm:max-h-[92dvh]">
           <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-ink-100 bg-white px-5 py-4">
             <div>
               <h2 id="dlg-title" className="text-base font-semibold tracking-tight">{title}</h2>
@@ -167,6 +167,15 @@ export function Dialog({ open, onClose, title, description, children, wide }: { 
         </div>
       )}
     </dialog>
+  );
+}
+
+/** Sticky action bar for long dialog forms: stays reachable while scrolling, clears the iOS home indicator. */
+export function DialogFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("sticky bottom-0 z-10 -mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 bg-white px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]", className)}>
+      {children}
+    </div>
   );
 }
 
