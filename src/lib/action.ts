@@ -1,7 +1,7 @@
 import { ZodError, type ZodType } from "zod";
 import { ActionError } from "./auth";
 
-export type ActionResult<T = undefined> =
+export type ActionResult<T = unknown> =
   | { ok: true; data?: T }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
