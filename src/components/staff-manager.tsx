@@ -148,7 +148,7 @@ function StaffForm({ member, services, tz, today, onClose }: { member?: StaffVM;
               if (r.ok) { setOffError(undefined); toast("Time off added"); router.refresh(); } else setOffError(r.fieldErrors?.endDate ?? r.error);
             })}>Add</Button>
           </div>
-          <p className="text-xs text-ink-500">Existing appointments aren't moved automatically — review the calendar after adding time off.</p>
+          <p className="text-xs text-ink-500">Existing appointments aren&apos;t moved automatically — review the calendar after adding time off.</p>
         </section>
       )}
     </div>

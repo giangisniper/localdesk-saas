@@ -77,7 +77,7 @@ export function CalendarView({ view, date, today, tz, appts, data, staffFilter, 
           <Button variant="ghost" size="sm" aria-label="Previous" onClick={() => step(-1)}><ChevronLeft className="size-4" /></Button>
           <Button variant="ghost" size="sm" aria-label="Next" onClick={() => step(1)}><ChevronRight className="size-4" /></Button>
         </div>
-        <h2 className="min-w-0 flex-1 text-lg font-semibold tracking-tight" aria-live="polite">{title}</h2>
+        <h2 className="order-last w-full text-lg font-semibold tracking-tight sm:order-none sm:w-auto sm:min-w-0 sm:flex-1" aria-live="polite">{title}</h2>
         <Select aria-label="Filter by staff" value={staffFilter} onChange={(e) => nav({ staff: e.target.value })} className="w-40">
           <option value="all">All staff</option>
           {data.staff.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
