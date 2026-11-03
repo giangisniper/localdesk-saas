@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-ink-50: #f8f8f6;
+  --color-ink-100: #f1f0ed;
+  --color-ink-200: #e5e3de;
+  --color-ink-300: #d2cfc8;
+  --color-ink-400: #a8a49b;
+  --color-ink-500: #7d7970;
+  --color-ink-600: #5d5a52;
+  --color-ink-700: #44423c;
+  --color-ink-800: #2b2a26;
+  --color-ink-900: #1a1917;
+
+  --color-brand-50: #effaf8;
+  --color-brand-100: #d3f3ee;
+  --color-brand-200: #a9e6de;
+  --color-brand-300: #74d1c7;
+  --color-brand-400: #43b6ac;
+  --color-brand-500: #269a92;
+  --color-brand-600: #0d7d77;
+  --color-brand-700: #0c645f;
+  --color-brand-800: #0d504d;
+  --color-brand-900: #0e4240;
+
+  --shadow-card: 0 1px 2px rgb(26 25 23 / 0.04), 0 0 0 1px rgb(26 25 23 / 0.05);
+  --shadow-pop: 0 12px 32px -8px rgb(26 25 23 / 0.18), 0 0 0 1px rgb(26 25 23 / 0.06);
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-rise: rise 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+  @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+}
+
+@layer base {
+  html { color-scheme: light; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--color-ink-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: var(--color-brand-200); }
+  dialog::backdrop { background: rgb(26 25 23 / 0.45); backdrop-filter: blur(2px); animation: fade-in 0.15s ease-out; }
+  @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--color-ink-300) transparent; }
